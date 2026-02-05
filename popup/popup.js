@@ -132,13 +132,9 @@ function setupEventListeners() {
     // Clear All Data
     elements.clearAllData.addEventListener('click', handleClearAllData);
 
-    // API Key buttons
-    document.querySelectorAll('.btn-test').forEach(btn => {
-        btn.addEventListener('click', () => testApiKey(btn.dataset.provider));
-    });
-
-    document.querySelectorAll('.btn-save').forEach(btn => {
-        btn.addEventListener('click', () => saveApiKey(btn.dataset.provider));
+    // API Key verify buttons
+    document.querySelectorAll('.btn-verify').forEach(btn => {
+        btn.addEventListener('click', () => verifyAndSaveApiKey(btn.dataset.provider));
     });
 
     // Temperature slider
@@ -236,70 +232,54 @@ async function checkApiKeys() {
     updateConnectionStatus();
 }
 
-// Test API key
-async function testApiKey(provider) {
+// Verify and Save API key (combined function)
+async function verifyAndSaveApiKey(provider) {
     const keyInput = document.getElementById(`${provider}Key`);
     const statusEl = document.getElementById(`${provider}Status`);
     const apiKey = keyInput.value.trim();
 
     if (!apiKey) {
-        statusEl.textContent = 'Enter a key first';
+        statusEl.textContent = 'Paste your API key first';
         statusEl.classList.add('error');
+        statusEl.classList.remove('configured');
         return;
     }
 
-    statusEl.textContent = 'Testing...';
+    statusEl.textContent = 'Verifying...';
     statusEl.classList.remove('configured', 'error');
 
     try {
-        const response = await sendMessage({
+        // Test the key first
+        const testResponse = await sendMessage({
             type: 'TEST_API_KEY',
             provider,
             apiKey
         });
 
-        if (response.success && response.valid) {
-            statusEl.textContent = 'Valid ✓';
+        if (testResponse.success && testResponse.valid) {
+            // Key is valid, save it
+            await sendMessage({
+                type: 'SAVE_API_KEY',
+                provider,
+                apiKey,
+                masterPassword
+            });
+
+            statusEl.textContent = '✓ Activated';
             statusEl.classList.add('configured');
+            statusEl.classList.remove('error');
+            keyInput.value = '';
+
+            updateConnectionStatus();
         } else {
-            statusEl.textContent = 'Invalid ✗';
+            statusEl.textContent = '✗ Invalid API key';
             statusEl.classList.add('error');
+            statusEl.classList.remove('configured');
         }
     } catch (error) {
-        statusEl.textContent = 'Error testing';
+        statusEl.textContent = '✗ Connection error';
         statusEl.classList.add('error');
-    }
-}
-
-// Save API key
-async function saveApiKey(provider) {
-    const keyInput = document.getElementById(`${provider}Key`);
-    const statusEl = document.getElementById(`${provider}Status`);
-    const apiKey = keyInput.value.trim();
-
-    if (!apiKey) {
-        statusEl.textContent = 'Enter a key first';
-        statusEl.classList.add('error');
-        return;
-    }
-
-    try {
-        await sendMessage({
-            type: 'SAVE_API_KEY',
-            provider,
-            apiKey,
-            masterPassword
-        });
-
-        statusEl.textContent = 'Saved ✓';
-        statusEl.classList.add('configured');
-        statusEl.classList.remove('error');
-        keyInput.value = '';
-
-        updateConnectionStatus();
-    } catch (error) {
-        statusEl.textContent = 'Error saving';
-        statusEl.classList.add('error');
+        statusEl.classList.remove('configured');
     }
 }
 
@@ -354,14 +334,8 @@ async function sendChatMessage() {
         if (response.success) {
             addMessage('assistant', response.response);
 
-            // Save chat history if enabled
-            if (settings.saveChatHistory) {
-                await sendMessage({
-                    type: 'SAVE_CHAT_HISTORY',
-                    history: messages,
-                    masterPassword
-                });
-            }
+            // Always save to shared storage for popup/popout sync
+            await saveCurrentMessages();
         } else {
             addSystemMessage(`Error: ${response.error}`);
         }
@@ -395,6 +369,9 @@ function addMessage(role, content) {
 
     elements.chatMessages.appendChild(messageEl);
     scrollToBottom();
+
+    // Save to shared storage for popup/popout sync
+    saveCurrentMessages();
 }
 
 // Add system message
@@ -497,41 +474,77 @@ function clearChat() {
   `;
 }
 
-// Load chat history
+// Load chat history (from shared storage)
 async function loadChatHistory() {
-    if (!settings.saveChatHistory) return;
-
     try {
-        const response = await sendMessage({
-            type: 'GET_CHAT_HISTORY',
-            masterPassword
-        });
+        // Load from shared session storage (for popup/popout sync)
+        const result = await chrome.storage.session.get('currentMessages');
 
-        if (response.success && response.history && response.history.length > 0) {
-            messages = response.history;
+        if (result.currentMessages && result.currentMessages.length > 0) {
+            messages = result.currentMessages;
+            renderMessages();
+            return;
+        }
 
-            // Remove welcome message
-            const welcomeMsg = elements.chatMessages.querySelector('.welcome-message');
-            if (welcomeMsg) {
-                welcomeMsg.remove();
-            }
-
-            // Render messages
-            messages.forEach(msg => {
-                const messageEl = document.createElement('div');
-                messageEl.className = `message ${msg.role}`;
-                const avatarIcon = msg.role === 'user' ? '👤' : getProviderIcon();
-                messageEl.innerHTML = `
-          <div class="message-avatar">${avatarIcon}</div>
-          <div class="message-content">${formatMessage(msg.content)}</div>
-        `;
-                elements.chatMessages.appendChild(messageEl);
+        // Fall back to persistent history if enabled
+        if (settings.saveChatHistory) {
+            const response = await sendMessage({
+                type: 'GET_CHAT_HISTORY',
+                masterPassword
             });
 
-            scrollToBottom();
+            if (response.success && response.history && response.history.length > 0) {
+                messages = response.history;
+                renderMessages();
+            }
         }
     } catch (error) {
         console.error('Failed to load chat history:', error);
+    }
+}
+
+// Render messages to the chat UI
+function renderMessages() {
+    // Remove welcome message
+    const welcomeMsg = elements.chatMessages.querySelector('.welcome-message');
+    if (welcomeMsg) {
+        welcomeMsg.remove();
+    }
+
+    // Clear existing messages
+    elements.chatMessages.innerHTML = '';
+
+    // Render messages
+    messages.forEach(msg => {
+        const messageEl = document.createElement('div');
+        messageEl.className = `message ${msg.role}`;
+        const avatarIcon = msg.role === 'user' ? '👤' : getProviderIcon();
+        messageEl.innerHTML = `
+          <div class="message-avatar">${avatarIcon}</div>
+          <div class="message-content">${formatMessage(msg.content)}</div>
+        `;
+        elements.chatMessages.appendChild(messageEl);
+    });
+
+    scrollToBottom();
+}
+
+// Save current messages to shared storage (for popup/popout sync)
+async function saveCurrentMessages() {
+    try {
+        // Save to session storage for popup/popout sync
+        await chrome.storage.session.set({ currentMessages: messages });
+
+        // Also save to persistent history if enabled
+        if (settings.saveChatHistory) {
+            await sendMessage({
+                type: 'SAVE_CHAT_HISTORY',
+                history: messages,
+                masterPassword
+            });
+        }
+    } catch (error) {
+        console.error('Failed to save messages:', error);
     }
 }
 

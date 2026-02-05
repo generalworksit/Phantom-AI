@@ -156,7 +156,12 @@ function setupEventListeners() {
     // Clear All Data
     elements.clearAllData.addEventListener('click', handleClearAllData);
 
-    // API Key buttons
+    // API Key verify buttons (same as popup)
+    document.querySelectorAll('.btn-verify').forEach(btn => {
+        btn.addEventListener('click', () => verifyAndSaveApiKey(btn.dataset.provider));
+    });
+
+    // Still support old buttons if present
     document.querySelectorAll('.btn-test').forEach(btn => {
         btn.addEventListener('click', () => testApiKey(btn.dataset.provider));
     });
@@ -336,7 +341,54 @@ async function hasStoredKey(provider) {
     }
 }
 
-// Test API key
+// Verify and Save API key (combined function)
+async function verifyAndSaveApiKey(provider) {
+    const keyInput = document.getElementById(`${provider}Key`);
+    const statusEl = document.getElementById(`${provider}Status`);
+    const apiKey = keyInput.value.trim();
+
+    if (!apiKey) {
+        statusEl.textContent = 'Paste your API key first';
+        statusEl.classList.add('error');
+        statusEl.classList.remove('configured');
+        return;
+    }
+
+    statusEl.textContent = 'Verifying...';
+    statusEl.classList.remove('configured', 'error');
+
+    try {
+        const testResponse = await sendMessage({
+            type: 'TEST_API_KEY',
+            provider,
+            apiKey
+        });
+
+        if (testResponse.success && testResponse.valid) {
+            await sendMessage({
+                type: 'SAVE_API_KEY',
+                provider,
+                apiKey,
+                masterPassword
+            });
+
+            statusEl.textContent = '✓ Activated';
+            statusEl.classList.add('configured');
+            statusEl.classList.remove('error');
+            keyInput.value = '';
+        } else {
+            statusEl.textContent = '✗ Invalid API key';
+            statusEl.classList.add('error');
+            statusEl.classList.remove('configured');
+        }
+    } catch (error) {
+        statusEl.textContent = '✗ Connection error';
+        statusEl.classList.add('error');
+        statusEl.classList.remove('configured');
+    }
+}
+
+// Test API key (legacy)
 async function testApiKey(provider) {
     const keyInput = document.getElementById(`${provider}Key`);
     const statusEl = document.getElementById(`${provider}Status`);
@@ -371,7 +423,7 @@ async function testApiKey(provider) {
     }
 }
 
-// Save API key
+// Save API key (legacy)
 async function saveApiKey(provider) {
     const keyInput = document.getElementById(`${provider}Key`);
     const statusEl = document.getElementById(`${provider}Status`);
@@ -469,13 +521,8 @@ async function sendChatMessage() {
             addMessage('assistant', response.response);
             updateTokenCount(response.response);
 
-            if (settings.saveChatHistory) {
-                await sendMessage({
-                    type: 'SAVE_CHAT_HISTORY',
-                    history: messages,
-                    masterPassword
-                });
-            }
+            // Save to shared storage for popup/popout sync
+            await saveCurrentMessages();
         } else {
             addSystemMessage(`Error: ${response.error}`);
         }
@@ -508,6 +555,9 @@ function addMessage(role, content) {
 
     elements.chatMessages.appendChild(messageEl);
     scrollToBottom();
+
+    // Save to shared storage for popup/popout sync
+    saveCurrentMessages();
 }
 
 // Add system message
@@ -604,42 +654,79 @@ function clearChat() {
   `;
 }
 
-// Load chat history
+// Load chat history (from shared storage - same as popup)
 async function loadChatHistory() {
-    if (!settings.saveChatHistory) return;
-
     try {
-        const response = await sendMessage({
-            type: 'GET_CHAT_HISTORY',
-            masterPassword
-        });
+        // Load from shared session storage (for popup/popout sync)
+        const result = await chrome.storage.session.get('currentMessages');
 
-        if (response.success && response.history && response.history.length > 0) {
-            messages = response.history;
+        if (result.currentMessages && result.currentMessages.length > 0) {
+            messages = result.currentMessages;
+            renderMessages();
+            return;
+        }
 
-            const welcomeMsg = elements.chatMessages.querySelector('.welcome-message');
-            if (welcomeMsg) {
-                welcomeMsg.remove();
-            }
-
-            messages.forEach(msg => {
-                const messageEl = document.createElement('div');
-                messageEl.className = `message ${msg.role}`;
-                const avatarIcon = msg.role === 'user' ? '👤' : getProviderIcon();
-                messageEl.innerHTML = `
-          <div class="message-avatar">${avatarIcon}</div>
-          <div class="message-content">${formatMessage(msg.content)}</div>
-        `;
-                elements.chatMessages.appendChild(messageEl);
-
-                tokenCount += estimateTokens(msg.content);
+        // Fall back to persistent history if enabled
+        if (settings.saveChatHistory) {
+            const response = await sendMessage({
+                type: 'GET_CHAT_HISTORY',
+                masterPassword
             });
 
-            elements.tokenCount.textContent = tokenCount.toLocaleString();
-            scrollToBottom();
+            if (response.success && response.history && response.history.length > 0) {
+                messages = response.history;
+                renderMessages();
+            }
         }
     } catch (error) {
         console.error('Failed to load chat history:', error);
+    }
+}
+
+// Render messages to the chat UI
+function renderMessages() {
+    // Remove welcome message
+    const welcomeMsg = elements.chatMessages.querySelector('.welcome-message');
+    if (welcomeMsg) {
+        welcomeMsg.remove();
+    }
+
+    // Clear existing messages
+    elements.chatMessages.innerHTML = '';
+
+    // Render messages
+    messages.forEach(msg => {
+        const messageEl = document.createElement('div');
+        messageEl.className = `message ${msg.role}`;
+        const avatarIcon = msg.role === 'user' ? '👤' : getProviderIcon();
+        messageEl.innerHTML = `
+          <div class="message-avatar">${avatarIcon}</div>
+          <div class="message-content">${formatMessage(msg.content)}</div>
+        `;
+        elements.chatMessages.appendChild(messageEl);
+        tokenCount += estimateTokens(msg.content);
+    });
+
+    elements.tokenCount.textContent = tokenCount.toLocaleString();
+    scrollToBottom();
+}
+
+// Save current messages to shared storage (for popup/popout sync)
+async function saveCurrentMessages() {
+    try {
+        // Save to session storage for popup/popout sync
+        await chrome.storage.session.set({ currentMessages: messages });
+
+        // Also save to persistent history if enabled
+        if (settings.saveChatHistory) {
+            await sendMessage({
+                type: 'SAVE_CHAT_HISTORY',
+                history: messages,
+                masterPassword
+            });
+        }
+    } catch (error) {
+        console.error('Failed to save messages:', error);
     }
 }
 
