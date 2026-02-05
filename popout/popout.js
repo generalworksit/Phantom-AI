@@ -23,6 +23,7 @@ const elements = {
     clearChatBtn: document.getElementById('clearChatBtn'),
     themeToggle: document.getElementById('themeToggle'),
     exportBtn: document.getElementById('exportBtn'),
+    screenshotBtn: document.getElementById('screenshotBtn'),
     tokenCount: document.getElementById('tokenCount'),
 
     // Provider
@@ -121,6 +122,14 @@ function setupEventListeners() {
 
     // Export
     elements.exportBtn.addEventListener('click', exportChat);
+
+    // Screenshot
+    if (elements.screenshotBtn) {
+        elements.screenshotBtn.addEventListener('click', captureScreenshot);
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', handleGlobalKeydown);
 
     // Provider selection
     elements.providerBtns.forEach(btn => {
@@ -837,3 +846,47 @@ function sendMessage(message) {
 
 // Start app
 init();
+
+// Handle global keyboard shortcuts
+function handleGlobalKeydown(e) {
+    // Ctrl+Shift+S: Screenshot
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        captureScreenshot();
+    }
+}
+
+// Capture screenshot (stealth mode - downloads as image)
+async function captureScreenshot() {
+    try {
+        // Capture the visible tab using Chrome API
+        const dataUrl = await chrome.tabs.captureVisibleTab(null, {
+            format: 'png',
+            quality: 100
+        });
+
+        // Generate a stealth filename (no obvious extension name)
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const filename = `capture_${timestamp}.png`;
+
+        // Download the screenshot
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        // Show subtle confirmation
+        const btn = elements.screenshotBtn;
+        if (btn) {
+            btn.style.color = 'var(--success)';
+            setTimeout(() => {
+                btn.style.color = '';
+            }, 1000);
+        }
+    } catch (error) {
+        console.error('Screenshot failed:', error);
+        addSystemMessage('Screenshot failed. Use browser screenshot (Win+Shift+S) instead.');
+    }
+}
