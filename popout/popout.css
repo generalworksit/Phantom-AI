@@ -16,6 +16,15 @@ body.popout-mode {
     height: 100vh;
 }
 
+/* View visibility - only show active view */
+.view {
+    display: none !important;
+}
+
+.view.active {
+    display: flex !important;
+}
+
 /* Header adjustments for popout */
 .popout-mode .header {
     padding: 12px 20px;
