@@ -81,7 +81,9 @@ function getDefaultSettings() {
     theme: 'dark',
     streamResponses: true,
     maxTokens: 2048,
-    temperature: 0.7
+    temperature: 0.7,
+    proxyUrl: '',  // Stealth proxy URL (e.g., https://study-notes.user.workers.dev)
+    useProxy: false
   };
 }
 
@@ -121,7 +123,40 @@ async function sendChatMessage(provider, messages, masterPassword) {
     throw new Error('API key not found. Please add your API key in settings.');
   }
 
+  // Check if proxy mode is enabled
+  const settings = (await chrome.storage.local.get('settings')).settings || getDefaultSettings();
+
+  if (settings.useProxy && settings.proxyUrl) {
+    // Use stealth proxy
+    return await sendViaProxy(provider, apiKey, messages, settings);
+  }
+
   return await aiManager.chat(provider, apiKey, messages);
+}
+
+// Send message through stealth proxy
+async function sendViaProxy(provider, apiKey, messages, settings) {
+  const response = await fetch(`${settings.proxyUrl}/v1/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Provider': provider,
+      'X-API-Key': apiKey
+    },
+    body: JSON.stringify({
+      messages,
+      temperature: settings.temperature || 0.7,
+      max_tokens: settings.maxTokens || 2048
+    })
+  });
+
+  const data = await response.json();
+
+  if (!data.success) {
+    throw new Error(data.error || 'Proxy request failed');
+  }
+
+  return data.response;
 }
 
 async function saveChatHistory(history, masterPassword) {

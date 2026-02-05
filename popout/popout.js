@@ -155,6 +155,14 @@ function setupEventListeners() {
         });
     });
 
+    // Quick prompt chips
+    document.querySelectorAll('.prompt-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            elements.messageInput.value = chip.dataset.text;
+            elements.messageInput.focus();
+        });
+    });
+
     // Master Password Toggle
     elements.masterPasswordToggle.addEventListener('change', handleMasterPasswordToggle);
     elements.saveMasterPassword.addEventListener('click', saveMasterPasswordHandler);
