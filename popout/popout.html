@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANTI-EQUALITY CHAT</title>
+    <link rel="stylesheet" href="../popup/popup.css">
+    <link rel="stylesheet" href="popout.css">
+</head>
+
+<body class="popout-mode">
+    <!-- Password Modal -->
+    <div id="passwordModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-icon">🔐</span>
+                <h3>Master Password Required</h3>
+            </div>
+            <p class="modal-description">Enter your master password to unlock encrypted data</p>
+            <input type="password" id="masterPasswordInput" placeholder="Enter master password..." autocomplete="off">
+            <div class="modal-buttons">
+                <button id="unlockBtn" class="btn-primary">Unlock</button>
+                <button id="cancelUnlockBtn" class="btn-secondary">Cancel</button>
+            </div>
+            <p id="passwordError" class="error-text hidden">Incorrect password</p>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container popout-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">
+                    <span class="logo-icon">⚡</span>
+                    <span class="logo-text">ANTI-EQUALITY CHAT</span>
+                </div>
+            </div>
+            <div class="header-center">
+                <!-- Provider Selector inline in header for popout -->
+                <div class="provider-selector">
+                    <button class="provider-btn active" data-provider="gemini" title="Google Gemini">
+                        <span>✨</span> Gemini
+                    </button>
+                    <button class="provider-btn" data-provider="openai" title="OpenAI GPT">
+                        <span>🤖</span> OpenAI
+                    </button>
+                    <button class="provider-btn" data-provider="claude" title="Anthropic Claude">
+                        <span>🧠</span> Claude
+                    </button>
+                </div>
+            </div>
+            <div class="header-right">
+                <div id="tokenCounter" class="token-counter" title="Tokens used this session">
+                    <span class="token-icon">🎫</span>
+                    <span id="tokenCount">0</span>
+                </div>
+                <button id="themeToggle" class="icon-btn" title="Toggle Theme">
+                    <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+                <button id="exportBtn" class="icon-btn" title="Export Chat">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                </button>
+                <button id="settingsBtn" class="icon-btn" title="Settings">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                        </path>
+                    </svg>
+                </button>
+                <button id="clearChatBtn" class="icon-btn" title="Clear Chat">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Sidebar for System Prompt -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <h3>System Prompt</h3>
+                    <button id="closeSidebar" class="icon-btn-small">×</button>
+                </div>
+                <div class="sidebar-content">
+                    <textarea id="systemPrompt" placeholder="Enter a custom system prompt to define AI behavior...
+
+Example:
+You are a helpful coding assistant. Be concise and provide code examples when relevant."></textarea>
+                    <div class="sidebar-actions">
+                        <button id="savePrompt" class="btn-small">Save Prompt</button>
+                        <button id="clearPrompt" class="btn-secondary-small">Clear</button>
+                    </div>
+                    <div class="preset-prompts">
+                        <h4>Presets</h4>
+                        <button class="preset-btn"
+                            data-prompt="You are a helpful coding assistant. Provide concise, accurate code examples. Prefer modern best practices.">💻
+                            Coder</button>
+                        <button class="preset-btn"
+                            data-prompt="You are a creative writer. Help with stories, poetry, and creative content. Be imaginative and expressive.">✍️
+                            Writer</button>
+                        <button class="preset-btn"
+                            data-prompt="You are a helpful assistant. Be concise, accurate, and helpful. Think step by step.">🤖
+                            Assistant</button>
+                        <button class="preset-btn"
+                            data-prompt="You are an expert analyst. Break down complex topics, provide data-driven insights, and explain your reasoning.">📊
+                            Analyst</button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Chat View -->
+            <div id="chatView" class="view active chat-view-popout">
+                <div id="chatMessages" class="chat-messages">
+                    <div class="welcome-message">
+                        <div class="welcome-icon">⚡</div>
+                        <h2>Welcome to ANTI-EQUALITY CHAT</h2>
+                        <p>Secure, private AI conversations</p>
+                        <div class="welcome-tips">
+                            <div class="tip">
+                                <span class="tip-icon">🔐</span>
+                                <span>Your API keys are encrypted locally</span>
+                            </div>
+                            <div class="tip">
+                                <span class="tip-icon">👁️</span>
+                                <span>No tracking, no data collection</span>
+                            </div>
+                            <div class="tip">
+                                <span class="tip-icon">🛡️</span>
+                                <span>Stealth mode active - undetectable</span>
+                            </div>
+                            <div class="tip">
+                                <span class="tip-icon">⌨️</span>
+                                <span>Press Ctrl+Shift+A to quick open</span>
+                            </div>
+                        </div>
+                        <p class="setup-hint">Configure your API keys in <strong>Settings</strong> to get started</p>
+                    </div>
+                </div>
+
+                <div class="input-container popout-input">
+                    <div class="input-actions">
+                        <button id="toggleSidebar" class="action-btn" title="System Prompt">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                            Prompt
+                        </button>
+                    </div>
+                    <div class="input-wrapper">
+                        <textarea id="messageInput" placeholder="Type your message... (Shift+Enter for new line)"
+                            rows="1"></textarea>
+                        <button id="sendBtn" class="send-btn" title="Send Message">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="input-hint">
+                        <span><kbd>Enter</kbd> send • <kbd>Shift+Enter</kbd> new line • <kbd>Ctrl+Shift+O</kbd>
+                            pop-out</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div id="settingsView" class="view settings-view-popout">
+                <div class="settings-header">
+                    <button id="backToChat" class="back-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                        Back to Chat
+                    </button>
+                    <h2>Settings</h2>
+                </div>
+
+                <div class="settings-content">
+                    <!-- Security Section -->
+                    <div class="settings-section">
+                        <h3 class="section-title">
+                            <span class="section-icon">🔒</span>
+                            Security & Privacy
+                        </h3>
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Master Password</label>
+                                <span class="setting-description">Encrypt API keys with a password</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="masterPasswordToggle">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div id="masterPasswordSetup" class="sub-setting hidden">
+                            <input type="password" id="newMasterPassword" placeholder="Enter new master password">
+                            <input type="password" id="confirmMasterPassword" placeholder="Confirm password">
+                            <button id="saveMasterPassword" class="btn-small">Set Password</button>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Save Chat History</label>
+                                <span class="setting-description">Keep conversations encrypted locally</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="saveChatHistoryToggle">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="setting-item danger">
+                            <div class="setting-info">
+                                <label>Clear All Data</label>
+                                <span class="setting-description">Delete all stored data permanently</span>
+                            </div>
+                            <button id="clearAllData" class="btn-danger">Clear</button>
+                        </div>
+                    </div>
+
+                    <!-- API Keys Section -->
+                    <div class="settings-section">
+                        <h3 class="section-title">
+                            <span class="section-icon">🔑</span>
+                            API Keys
+                        </h3>
+
+                        <!-- Gemini -->
+                        <div class="api-key-item">
+                            <div class="api-header">
+                                <span class="api-icon">✨</span>
+                                <span class="api-name">Google Gemini</span>
+                                <span id="geminiStatus" class="api-status">Not configured</span>
+                            </div>
+                            <div class="api-input-group">
+                                <input type="password" id="geminiKey" placeholder="Enter Gemini API key">
+                                <button class="btn-test" data-provider="gemini">Test</button>
+                                <button class="btn-save" data-provider="gemini">Save</button>
+                            </div>
+                            <a href="https://aistudio.google.com/app/apikey" target="_blank" class="api-link">Get API
+                                key →</a>
+                        </div>
+
+                        <!-- OpenAI -->
+                        <div class="api-key-item">
+                            <div class="api-header">
+                                <span class="api-icon">🤖</span>
+                                <span class="api-name">OpenAI GPT</span>
+                                <span id="openaiStatus" class="api-status">Not configured</span>
+                            </div>
+                            <div class="api-input-group">
+                                <input type="password" id="openaiKey" placeholder="Enter OpenAI API key">
+                                <button class="btn-test" data-provider="openai">Test</button>
+                                <button class="btn-save" data-provider="openai">Save</button>
+                            </div>
+                            <a href="https://platform.openai.com/api-keys" target="_blank" class="api-link">Get API key
+                                →</a>
+                        </div>
+
+                        <!-- Claude -->
+                        <div class="api-key-item">
+                            <div class="api-header">
+                                <span class="api-icon">🧠</span>
+                                <span class="api-name">Anthropic Claude</span>
+                                <span id="claudeStatus" class="api-status">Not configured</span>
+                            </div>
+                            <div class="api-input-group">
+                                <input type="password" id="claudeKey" placeholder="Enter Claude API key">
+                                <button class="btn-test" data-provider="claude">Test</button>
+                                <button class="btn-save" data-provider="claude">Save</button>
+                            </div>
+                            <a href="https://console.anthropic.com/settings/keys" target="_blank" class="api-link">Get
+                                API key →</a>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Section -->
+                    <div class="settings-section">
+                        <h3 class="section-title">
+                            <span class="section-icon">⚙️</span>
+                            Advanced
+                        </h3>
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Max Tokens</label>
+                                <span class="setting-description">Maximum response length</span>
+                            </div>
+                            <select id="maxTokens">
+                                <option value="1024">1024</option>
+                                <option value="2048" selected>2048</option>
+                                <option value="4096">4096</option>
+                                <option value="8192">8192</option>
+                            </select>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Temperature</label>
+                                <span class="setting-description">Response creativity (0 = focused, 1 = creative)</span>
+                            </div>
+                            <div class="range-group">
+                                <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.7">
+                                <span id="temperatureValue">0.7</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Keyboard Shortcuts -->
+                    <div class="settings-section">
+                        <h3 class="section-title">
+                            <span class="section-icon">⌨️</span>
+                            Keyboard Shortcuts
+                        </h3>
+                        <div class="shortcuts-list">
+                            <div class="shortcut-item">
+                                <kbd>Ctrl+Shift+A</kbd>
+                                <span>Open extension popup</span>
+                            </div>
+                            <div class="shortcut-item">
+                                <kbd>Ctrl+Shift+O</kbd>
+                                <span>Open pop-out window</span>
+                            </div>
+                            <div class="shortcut-item">
+                                <kbd>Enter</kbd>
+                                <span>Send message</span>
+                            </div>
+                            <div class="shortcut-item">
+                                <kbd>Shift+Enter</kbd>
+                                <span>New line</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- About Section -->
+                    <div class="settings-section about-section">
+                        <div class="about-content">
+                            <span class="about-logo">⚡</span>
+                            <span class="about-name">ANTI-EQUALITY CHAT</span>
+                            <span class="about-version">v1.1.0</span>
+                        </div>
+                        <p class="about-tagline">Secure • Private • Undetectable</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="popout.js" type="module"></script>
+</body>
+
+</html>
