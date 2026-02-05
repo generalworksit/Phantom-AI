@@ -1,5 +1,5 @@
 # ⚡ Phantom-AI
-
+   THIS PROJECT IS IN BETA AND THE PRODUCTION NOT FULLY FINISHED YET SO MAY HAVE SOME ERRORS    
 > **Stealth AI Chat Extension** - Private, Encrypted, Undetectable
 
 A Chrome extension that provides secure AI chat with Gemini, OpenAI, and Claude — featuring encrypted API key storage, stealth communications, and zero tracking.
