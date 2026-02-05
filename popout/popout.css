@@ -208,6 +208,7 @@ body.popout-mode {
     flex-direction: column;
     overflow: hidden;
     background: linear-gradient(180deg, var(--bg-primary) 0%, rgba(16, 16, 32, 0.95) 100%);
+    position: relative;
 }
 
 .chat-view-popout .chat-messages {
@@ -237,7 +238,7 @@ body.popout-mode {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
     margin-bottom: 24px;
     animation: orb-pulse 3s ease-in-out infinite;
-    box-shadow: 0 0 60px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 0 30px rgba(102, 126, 234, 0.3);
 }
 
 @keyframes orb-pulse {
@@ -245,12 +246,12 @@ body.popout-mode {
     0%,
     100% {
         transform: scale(1);
-        box-shadow: 0 0 60px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 0 30px rgba(102, 126, 234, 0.3);
     }
 
     50% {
         transform: scale(1.05);
-        box-shadow: 0 0 80px rgba(102, 126, 234, 0.6);
+        box-shadow: 0 0 40px rgba(102, 126, 234, 0.4);
     }
 }
 
@@ -460,6 +461,9 @@ body.popout-mode {
 .settings-view-popout {
     flex: 1;
     overflow: hidden;
+    position: relative;
+    z-index: 100;
+    background: var(--bg-primary);
 }
 
 .settings-view-popout .settings-content {

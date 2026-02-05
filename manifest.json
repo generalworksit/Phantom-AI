@@ -25,7 +25,8 @@
   },
   "permissions": [
     "storage",
-    "contextMenus"
+    "contextMenus",
+    "activeTab"
   ],
   "commands": {
     "_execute_action": {
