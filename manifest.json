@@ -26,8 +26,12 @@
   "permissions": [
     "storage",
     "contextMenus",
-    "activeTab"
+    "activeTab",
+    "sidePanel"
   ],
+  "side_panel": {
+    "default_path": "popout/popout.html"
+  },
   "commands": {
     "_execute_action": {
       "suggested_key": {

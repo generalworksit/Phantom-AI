@@ -67,6 +67,11 @@ const elements = {
     temperature: document.getElementById('temperature'),
     temperatureValue: document.getElementById('temperatureValue'),
 
+    // Models
+    geminiModel: document.getElementById('geminiModel'),
+    openaiModel: document.getElementById('openaiModel'),
+    claudeModel: document.getElementById('claudeModel'),
+
     // Modal
     passwordModal: document.getElementById('passwordModal'),
     masterPasswordInput: document.getElementById('masterPasswordInput'),
@@ -101,6 +106,11 @@ function applySettings() {
     elements.maxTokens.value = settings.maxTokens || 2048;
     elements.temperature.value = settings.temperature || 0.7;
     elements.temperatureValue.textContent = settings.temperature || 0.7;
+
+    // Load saved models
+    if (elements.geminiModel) elements.geminiModel.value = settings.geminiModel || 'gemini-1.5-flash';
+    if (elements.openaiModel) elements.openaiModel.value = settings.openaiModel || 'gpt-4o-mini';
+    if (elements.claudeModel) elements.claudeModel.value = settings.claudeModel || 'claude-3-5-sonnet-20241022';
 
     selectProvider(settings.selectedProvider || 'gemini');
 }
@@ -199,6 +209,26 @@ function setupEventListeners() {
         settings.maxTokens = parseInt(e.target.value);
         saveSettings();
     });
+
+    // Model selectors
+    if (elements.geminiModel) {
+        elements.geminiModel.addEventListener('change', (e) => {
+            settings.geminiModel = e.target.value;
+            saveSettings();
+        });
+    }
+    if (elements.openaiModel) {
+        elements.openaiModel.addEventListener('change', (e) => {
+            settings.openaiModel = e.target.value;
+            saveSettings();
+        });
+    }
+    if (elements.claudeModel) {
+        elements.claudeModel.addEventListener('change', (e) => {
+            settings.claudeModel = e.target.value;
+            saveSettings();
+        });
+    }
 
     // Password modal
     if (elements.unlockBtn) {
@@ -523,13 +553,25 @@ async function sendChatMessage() {
             chatMessages.push({ role: 'system', content: systemPrompt });
         }
 
-        chatMessages.push(...messages.map(m => ({ role: m.role, content: m.content })));
+        chatMessages.push(...messages.map(m => ({ role: m.role, content: m.content, image: m.image })));
+
+        // Determine selected model
+        let selectedModel = null;
+        if (currentProvider === 'gemini') selectedModel = settings.geminiModel || 'gemini-1.5-flash';
+        if (currentProvider === 'openai') selectedModel = settings.openaiModel || 'gpt-4o-mini';
+        if (currentProvider === 'claude') selectedModel = settings.claudeModel || 'claude-3-5-sonnet-20241022';
+
+        // Clear image before sending but keep ref
+        const imageToSend = capturedImage;
+        if (capturedImage) clearImagePreview();
 
         const response = await sendMessage({
             type: 'CHAT',
             provider: currentProvider,
             messages: chatMessages,
-            masterPassword
+            masterPassword,
+            image: imageToSend,
+            model: selectedModel
         });
 
         hideTypingIndicator();

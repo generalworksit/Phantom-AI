@@ -261,7 +261,7 @@ You are a helpful coding assistant. Be concise and provide code examples when re
                     <div class="settings-section">
                         <h3 class="section-title">
                             <span class="section-icon">🔑</span>
-                            API Keys
+                            API Keys & Models
                         </h3>
 
                         <!-- Gemini -->
@@ -276,8 +276,16 @@ You are a helpful coding assistant. Be concise and provide code examples when re
                                 <input type="password" id="geminiKey" placeholder="Paste your Gemini API key">
                                 <button class="btn-verify" data-provider="gemini">Verify & Save</button>
                             </div>
-                            <a href="https://aistudio.google.com/app/apikey" target="_blank" class="api-link">Get FREE
-                                API key →</a>
+                            <div class="model-selector-group">
+                                <label for="geminiModel">Model:</label>
+                                <select id="geminiModel" class="model-select">
+                                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                                    <option value="gemini-1.0-pro">Gemini 1.0 Pro</option>
+                                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Exp)</option>
+                                </select>
+                            </div>
+                            <a href="https://aistudio.google.com/app/apikey" target="_blank" class="api-link">Get FREE API key →</a>
                         </div>
 
                         <!-- OpenAI -->
@@ -292,8 +300,15 @@ You are a helpful coding assistant. Be concise and provide code examples when re
                                 <input type="password" id="openaiKey" placeholder="Paste your OpenAI API key">
                                 <button class="btn-verify" data-provider="openai">Verify & Save</button>
                             </div>
-                            <a href="https://platform.openai.com/api-keys" target="_blank" class="api-link">Get API key
-                                (requires $5+ credits) →</a>
+                            <div class="model-selector-group">
+                                <label for="openaiModel">Model:</label>
+                                <select id="openaiModel" class="model-select">
+                                    <option value="gpt-4o-mini">GPT-4o Mini</option>
+                                    <option value="gpt-4o">GPT-4o</option>
+                                    <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                                </select>
+                            </div>
+                            <a href="https://platform.openai.com/api-keys" target="_blank" class="api-link">Get API key (requires $5+ credits) →</a>
                         </div>
 
                         <!-- Claude -->
@@ -308,8 +323,15 @@ You are a helpful coding assistant. Be concise and provide code examples when re
                                 <input type="password" id="claudeKey" placeholder="Paste your Claude API key">
                                 <button class="btn-verify" data-provider="claude">Verify & Save</button>
                             </div>
-                            <a href="https://console.anthropic.com/settings/keys" target="_blank" class="api-link">Get
-                                API key (requires billing) →</a>
+                            <div class="model-selector-group">
+                                <label for="claudeModel">Model:</label>
+                                <select id="claudeModel" class="model-select">
+                                    <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                                    <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+                                    <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
+                                </select>
+                            </div>
+                            <a href="https://console.anthropic.com/settings/keys" target="_blank" class="api-link">Get API key (requires billing) →</a>
                         </div>
                     </div>
 

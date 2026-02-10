@@ -55,6 +55,14 @@ const elements = {
     temperature: document.getElementById('temperature'),
     temperatureValue: document.getElementById('temperatureValue'),
 
+    // Models
+    geminiModel: document.getElementById('geminiModel'),
+    openaiModel: document.getElementById('openaiModel'),
+    claudeModel: document.getElementById('claudeModel'),
+
+    // Screenshot
+    screenshotBtn: document.getElementById('screenshotBtn'),
+
     // Modal
     passwordModal: document.getElementById('passwordModal'),
     masterPasswordInput: document.getElementById('masterPasswordInput'),
@@ -62,6 +70,9 @@ const elements = {
     cancelUnlockBtn: document.getElementById('cancelUnlockBtn'),
     passwordError: document.getElementById('passwordError')
 };
+
+// Image handling
+let capturedImage = null;
 
 // Initialize
 async function init() {
@@ -88,12 +99,18 @@ function applySettings() {
     elements.temperature.value = settings.temperature || 0.7;
     elements.temperatureValue.textContent = settings.temperature || 0.7;
 
+    // Load saved models
+    if (elements.geminiModel) elements.geminiModel.value = settings.geminiModel || 'gemini-1.5-flash';
+    if (elements.openaiModel) elements.openaiModel.value = settings.openaiModel || 'gpt-4o-mini';
+    if (elements.claudeModel) elements.claudeModel.value = settings.claudeModel || 'claude-3-5-sonnet-20241022';
+
     // Select current provider
     selectProvider(settings.selectedProvider || 'gemini');
 
     // Check if locked
     if (settings.masterPasswordEnabled) {
         isLocked = true;
+        showPasswordModal(); // Ensure modal shows if locked
     }
 }
 
@@ -111,6 +128,11 @@ function setupEventListeners() {
 
     // Pop-out window
     elements.popoutBtn.addEventListener('click', openPopout);
+
+    // Screenshot
+    if (elements.screenshotBtn) {
+        elements.screenshotBtn.addEventListener('click', captureScreenshot);
+    }
 
     // Provider selection
     elements.providerBtns.forEach(btn => {
@@ -149,6 +171,26 @@ function setupEventListeners() {
         settings.maxTokens = parseInt(e.target.value);
         saveSettings();
     });
+
+    // Model selectors
+    if (elements.geminiModel) {
+        elements.geminiModel.addEventListener('change', (e) => {
+            settings.geminiModel = e.target.value;
+            saveSettings();
+        });
+    }
+    if (elements.openaiModel) {
+        elements.openaiModel.addEventListener('change', (e) => {
+            settings.openaiModel = e.target.value;
+            saveSettings();
+        });
+    }
+    if (elements.claudeModel) {
+        elements.claudeModel.addEventListener('change', (e) => {
+            settings.claudeModel = e.target.value;
+            saveSettings();
+        });
+    }
 
     // Password modal
     elements.unlockBtn.addEventListener('click', handleUnlock);
@@ -193,10 +235,12 @@ async function updateConnectionStatus() {
     if (hasKey) {
         statusDot.classList.remove('error', 'loading');
         statusText.textContent = 'Ready';
+        statusDot.style.background = 'var(--success)';
     } else {
         statusDot.classList.add('error');
         statusDot.classList.remove('loading');
         statusText.textContent = 'No API Key';
+        statusDot.style.background = 'var(--danger)';
     }
 }
 
@@ -222,7 +266,7 @@ async function checkApiKeys() {
         const hasKey = await hasStoredKey(provider);
         const statusEl = document.getElementById(`${provider}Status`);
 
-        if (hasKey) {
+        if (hasKey && statusEl) {
             statusEl.textContent = 'Configured';
             statusEl.classList.add('configured');
             statusEl.classList.remove('error');
@@ -301,7 +345,7 @@ function autoResizeTextarea() {
 // Send chat message
 async function sendChatMessage() {
     const content = elements.messageInput.value.trim();
-    if (!content) return;
+    if (!content && !capturedImage) return;
 
     // Check if API key exists
     const hasKey = await hasStoredKey(currentProvider);
@@ -311,7 +355,7 @@ async function sendChatMessage() {
     }
 
     // Add user message
-    addMessage('user', content);
+    addMessage('user', content, capturedImage);
     elements.messageInput.value = '';
     elements.messageInput.style.height = 'auto';
 
@@ -322,11 +366,29 @@ async function sendChatMessage() {
     elements.sendBtn.disabled = true;
 
     try {
+        // Build messages array
+        const chatMessages = messages.map(m => ({
+            role: m.role,
+            content: m.content,
+            image: m.image
+        }));
+
+        // Determine selected model
+        let selectedModel = null;
+        if (currentProvider === 'gemini') selectedModel = settings.geminiModel || 'gemini-1.5-flash';
+        if (currentProvider === 'openai') selectedModel = settings.openaiModel || 'gpt-4o-mini';
+        if (currentProvider === 'claude') selectedModel = settings.claudeModel || 'claude-3-5-sonnet-20241022';
+
+        const imageToSend = capturedImage;
+        if (capturedImage) clearImagePreview();
+
         const response = await sendMessage({
             type: 'CHAT',
             provider: currentProvider,
-            messages: messages.map(m => ({ role: m.role, content: m.content })),
-            masterPassword
+            messages: chatMessages,
+            masterPassword,
+            image: imageToSend,
+            model: selectedModel
         });
 
         hideTypingIndicator();
@@ -347,9 +409,62 @@ async function sendChatMessage() {
     elements.sendBtn.disabled = false;
 }
 
+// Capture screenshot
+async function captureScreenshot() {
+    try {
+        const response = await sendMessage({ type: 'CAPTURE_VISIBLE_TAB' });
+
+        if (response.success && response.dataUrl) {
+            capturedImage = response.dataUrl;
+            showImagePreview(capturedImage);
+        } else {
+            alert('Failed to capture screenshot: ' + (response.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Screenshot error:', error);
+        alert('Screenshot error: ' + error.message);
+    }
+}
+
+// Show image preview in input area
+function showImagePreview(dataUrl) {
+    // Check if preview already exists
+    let previewContainer = document.getElementById('imagePreviewContainer');
+
+    if (!previewContainer) {
+        previewContainer = document.createElement('div');
+        previewContainer.id = 'imagePreviewContainer';
+        previewContainer.className = 'image-preview-container';
+        previewContainer.style.padding = '8px 16px 0';
+        previewContainer.style.display = 'flex';
+        previewContainer.style.alignItems = 'center';
+
+        const inputContainer = document.querySelector('.input-container');
+        inputContainer.insertBefore(previewContainer, inputContainer.firstChild);
+    }
+
+    previewContainer.innerHTML = `
+        <div style="position: relative; display: inline-block;">
+            <img src="${dataUrl}" style="height: 60px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <button id="removeImageBtn" style="position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;">×</button>
+        </div>
+    `;
+
+    document.getElementById('removeImageBtn').addEventListener('click', clearImagePreview);
+}
+
+// Clear image preview
+function clearImagePreview() {
+    capturedImage = null;
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    if (previewContainer) {
+        previewContainer.remove();
+    }
+}
+
 // Add message to chat
-function addMessage(role, content) {
-    messages.push({ role, content, timestamp: Date.now() });
+function addMessage(role, content, image = null) {
+    messages.push({ role, content, image, timestamp: Date.now() });
 
     // Remove welcome message if present
     const welcomeMsg = elements.chatMessages.querySelector('.welcome-message');
@@ -362,9 +477,17 @@ function addMessage(role, content) {
 
     const avatarIcon = role === 'user' ? '👤' : getProviderIcon();
 
+    let imageHtml = '';
+    if (image) {
+        imageHtml = `<img src="${image}" style="max-width: 100%; border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--border-color);">`;
+    }
+
     messageEl.innerHTML = `
     <div class="message-avatar">${avatarIcon}</div>
-    <div class="message-content">${formatMessage(content)}</div>
+    <div class="message-content">
+        ${imageHtml}
+        ${formatMessage(content)}
+    </div>
   `;
 
     elements.chatMessages.appendChild(messageEl);
@@ -394,6 +517,7 @@ function getProviderIcon() {
 
 // Format message with markdown-like styling
 function formatMessage(content) {
+    if (!content) return '';
     // Escape HTML
     content = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -519,9 +643,18 @@ function renderMessages() {
         const messageEl = document.createElement('div');
         messageEl.className = `message ${msg.role}`;
         const avatarIcon = msg.role === 'user' ? '👤' : getProviderIcon();
+
+        let imageHtml = '';
+        if (msg.image) {
+            imageHtml = `<img src="${msg.image}" style="max-width: 100%; border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--border-color);">`;
+        }
+
         messageEl.innerHTML = `
           <div class="message-avatar">${avatarIcon}</div>
-          <div class="message-content">${formatMessage(msg.content)}</div>
+          <div class="message-content">
+            ${imageHtml}
+            ${formatMessage(msg.content)}
+          </div>
         `;
         elements.chatMessages.appendChild(messageEl);
     });
@@ -605,6 +738,8 @@ async function handleClearAllData() {
     messages = [];
     settings = {};
     masterPassword = null;
+    capturedImage = null; // Clear image
+    clearImagePreview();
 
     // Reload
     await loadSettings();

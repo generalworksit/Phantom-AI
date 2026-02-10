@@ -35,7 +35,13 @@ async function handleMessage(message, sender, sendResponse) {
         break;
 
       case 'CHAT':
-        const response = await sendChatMessage(message.provider, message.messages, message.masterPassword);
+        const response = await sendChatMessage(
+          message.provider,
+          message.messages,
+          message.masterPassword,
+          message.image,
+          message.model
+        );
         sendResponse({ success: true, response });
         break;
 
@@ -57,6 +63,23 @@ async function handleMessage(message, sender, sendResponse) {
       case 'GET_CHAT_HISTORY':
         const history = await getChatHistory(message.masterPassword);
         sendResponse({ success: true, history });
+        break;
+
+      case 'CAPTURE_VISIBLE_TAB':
+        try {
+          // Get the active tab in current window
+          const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (!activeTab) {
+            throw new Error('No active tab found');
+          }
+
+          // Capture the visible area of the currently active tab
+          const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
+          sendResponse({ success: true, dataUrl });
+        } catch (error) {
+          console.error('Screenshot error:', error);
+          sendResponse({ success: false, error: error.message });
+        }
         break;
 
       case 'CLEAR_ALL_DATA':
@@ -117,7 +140,7 @@ async function testApiKey(provider, apiKey) {
   return await aiManager.testConnection(provider, apiKey);
 }
 
-async function sendChatMessage(provider, messages, masterPassword) {
+async function sendChatMessage(provider, messages, masterPassword, image = null, model = null) {
   const apiKey = await getApiKey(provider, masterPassword);
   if (!apiKey) {
     throw new Error('API key not found. Please add your API key in settings.');
@@ -128,14 +151,14 @@ async function sendChatMessage(provider, messages, masterPassword) {
 
   if (settings.useProxy && settings.proxyUrl) {
     // Use stealth proxy
-    return await sendViaProxy(provider, apiKey, messages, settings);
+    return await sendViaProxy(provider, apiKey, messages, settings, image, model);
   }
 
-  return await aiManager.chat(provider, apiKey, messages);
+  return await aiManager.chat(provider, apiKey, messages, image, model);
 }
 
 // Send message through stealth proxy
-async function sendViaProxy(provider, apiKey, messages, settings) {
+async function sendViaProxy(provider, apiKey, messages, settings, image = null, model = null) {
   const response = await fetch(`${settings.proxyUrl}/v1/chat`, {
     method: 'POST',
     headers: {
@@ -145,6 +168,8 @@ async function sendViaProxy(provider, apiKey, messages, settings) {
     },
     body: JSON.stringify({
       messages,
+      image,
+      model,
       temperature: settings.temperature || 0.7,
       max_tokens: settings.maxTokens || 2048
     })
